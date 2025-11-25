@@ -1,18 +1,28 @@
-/**
- * Welcome to Cloudflare Workers! This is your first worker.
- *
- * - Run `npm run dev` in your terminal to start a development server
- * - Open a browser tab at http://localhost:8787/ to see your worker in action
- * - Run `npm run deploy` to publish your worker
- *
- * Bind resources to your worker in `wrangler.jsonc`. After adding bindings, a type definition for the
- * `Env` object can be regenerated with `npm run cf-typegen`.
- *
- * Learn more at https://developers.cloudflare.com/workers/
- */
+const base = 'https://raw.githubusercontent.com/pmalacho-mit/suede/refs/heads/main/scripts';
+const cache = {
+	cacheTtl: 60,
+	cacheEverything: true,
+} satisfies RequestInitCfProperties;
 
 export default {
 	async fetch(request, env, ctx): Promise<Response> {
-		return new Response('Hello World!');
+		const url = new URL(request.url);
+		let { pathname } = url;
+
+		if (!pathname.endsWith('.sh')) pathname += '.sh';
+
+		const upstream = new URL(base + pathname);
+
+		const resp = await fetch(upstream.toString(), {
+			method: request.method,
+			headers: request.headers,
+			cf: cache,
+		});
+
+		return new Response(resp.body, {
+			status: resp.status,
+			statusText: resp.statusText,
+			headers: resp.headers,
+		});
 	},
 } satisfies ExportedHandler<Env>;
